@@ -4,7 +4,7 @@ version:            0.1.0.0
 author:             RSerhii
 maintainer:         rubetsserhii@gmail.com
 
-common c
+common lang
   default-language:   GHC2021
   default-extensions:
     NoFlexibleInstances
@@ -60,13 +60,34 @@ common c
     -Wno-unrecognised-pragmas -fprint-equality-relations
     -fprint-explicit-kinds -fprint-explicit-foralls
 
+library
+  import:          lang
+  hs-source-dirs:  src
+  exposed-modules:
+    Market.Contract
+    Market.Utils
+    Market.Types
 
-executable PlutarchMarketExe
-    import:           c
-    hs-source-dirs:   app
-    main-is:          Main.hs
-    build-depends:
-        base
-     --   , PlutarchMarket
-     --   , plutarch
-        
+  build-depends:
+    base
+    , plutarch
+
+test-suite market-test
+  import:           lang
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   test
+  main-is:          Main.hs
+  other-modules:
+    Eval
+    Spec
+  build-depends:    
+    , base
+    , data-default
+    , tasty
+    , tasty-hunit
+    , PlutarchMarket  
+    , plutus-core
+    , plutus-ledger-api
+    , plutus-tx 
+    , plutarch
+    , text

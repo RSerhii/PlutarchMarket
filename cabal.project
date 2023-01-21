@@ -25,7 +25,7 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/plutus
-  tag: 8db880dab08a5b31da0151e44df8b1276ca78fee
+  tag: 1930e25c10a4c24c2859b4969924962e062dacfd
   subdir:
     plutus-core
     plutus-ledger-api
@@ -70,6 +70,7 @@ source-repository-package
 
 allow-newer:
     base,
+    base16,
     protolude,
     containers,
     template-haskell,
