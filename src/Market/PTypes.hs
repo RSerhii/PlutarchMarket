@@ -12,7 +12,6 @@ import qualified GHC.Generics as GHC
 -- import Generics.SOP (Generic, I (I))
 
 import Plutarch
--- import Plutarch.Api.V2.Contexts
 import Plutarch.DataRepr
 import Plutarch.Lift
 import Plutarch.Prelude
