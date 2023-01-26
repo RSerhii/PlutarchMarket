@@ -67,10 +67,17 @@ library
     Market.Contract
     Market.Utils
     Market.Types
+    Market.PTypes
+    Market.Helpers
+    PExtra.API
+    PExtra.Monadic
 
   build-depends:
     base
     , plutarch
+    , plutarch-extra
+    , plutus-tx
+    , plutus-ledger-api
 
 test-suite market-test
   import:           lang
