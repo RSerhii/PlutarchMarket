@@ -37,8 +37,14 @@ cancelOfferWithoutContext = property $ do
 
 cancelOfferWithoutDatum :: Property
 cancelOfferWithoutDatum = property $ do
-  let offerRedeemer = mkOfferData CancelOffer
-  expectFailure [PlutusTx.toData (), offerRedeemer, PlutusTx.toData ()]
+  seller <- forAll genPkh
+  orderTxRef <- forAll genTxOutRef
+  let 
+    offerRedeemer = mkOfferData CancelOffer
+    txInfo = mkTxInfo seller
+    purpose = mkPurpose orderTxRef
+    cxtToData = PlutusTx.toData $ mkContext txInfo purpose
+  expectFailure [PlutusTx.toData (), offerRedeemer, cxtToData]
 
 cancelOfferSuccess :: Property
 cancelOfferSuccess = property $ do
