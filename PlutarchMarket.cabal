@@ -87,11 +87,15 @@ test-suite market-test
   other-modules:
     Eval
     Spec
+    TestUtils
   build-depends:    
     , base
-    , data-default
+    , base16
+    , bytestring
     , tasty
     , tasty-hunit
+    , tasty-hedgehog
+    , hedgehog
     , PlutarchMarket  
     , plutus-core
     , plutus-ledger-api
