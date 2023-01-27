@@ -1,4 +1,27 @@
-module TestUtils (mkOfferRedeemer, mkOfferData, genToken1, genToken2, genPkh, genDatum, genAssets, mkTxInfo, mkPurpose, mkContext, genTxOutRef) where
+module TestUtils (
+    mkOfferRedeemer,
+    mkOfferData, 
+    genToken1, 
+    genToken2, 
+    genPkh, 
+    genDatum, 
+    mkOfferDatum,
+    genAssets, 
+    mkTxInfo, 
+    mkPurpose, 
+    mkContext, 
+    genTxOutRef,
+    mkTxInfoWithIO,
+    mkValues,
+    mkValue,
+    mkAdaValue,
+    mkTxOut,
+    mkTxIn,
+    genTxIn,
+    genTxOut,
+    mkDatumHash,
+    mkDatum
+) where
     
 import qualified PlutusTx
 
@@ -15,6 +38,8 @@ import Hedgehog.Range as Range
 import Hedgehog.Gen
 import PlutusPrelude ((<&>))
 import qualified PlutusLedgerApi.V1.Interval as Interval
+import qualified PlutusLedgerApi.V1.Value as Value
+import Plutarch.Api.V1 (datumHash)
 
 mkOfferRedeemer :: OfferAction -> OfferRedeemer
 mkOfferRedeemer = OfferRedeemer
@@ -33,6 +58,18 @@ genCS = CurrencySymbol $ BuiltinByteString $ mkByteString $ T.pack "805fe1efcdea
 
 mkAssetClass :: CurrencySymbol -> TokenName -> AssetClass
 mkAssetClass cs tn = AssetClass (cs, tn)
+
+mkAdaAssetClass :: AssetClass
+mkAdaAssetClass = mkAssetClass adaSymbol adaToken
+
+mkValue :: AssetClass -> Integer -> Value
+mkValue (AssetClass (cs, tn)) = Value.singleton cs tn
+
+mkAdaValue :: Integer -> Value
+mkAdaValue = mkValue mkAdaAssetClass
+
+mkValues :: [Value] -> Value -> Value
+mkValues xs acc = foldl (flip (<>)) acc xs
 
 genAssets :: (AssetClass, AssetClass)
 genAssets = 
@@ -64,12 +101,20 @@ genDatum token pkh price =
 mkOfferDatum :: AssetClass -> PubKeyHash -> Integer -> OfferDatum
 mkOfferDatum = OfferDatum
 
+mkDatum :: ToData a => a -> Datum
+mkDatum = Datum . toBuiltinData
+
+mkDatumHash :: Datum -> DatumHash
+mkDatumHash = datumHash
 
 mkTxInfo :: PubKeyHash -> TxInfo
-mkTxInfo pkh =
+mkTxInfo = mkTxInfoWithIO mempty mempty
+
+mkTxInfoWithIO :: [TxInInfo] -> [TxOut] -> PubKeyHash -> TxInfo
+mkTxInfoWithIO txIn txOut pkh =
   TxInfo
-    { txInfoInputs = mempty
-    , txInfoOutputs = mempty
+    { txInfoInputs = txIn
+    , txInfoOutputs = txOut
     , txInfoFee = mempty
     , txInfoMint = mempty
     , txInfoDCert = []
@@ -97,3 +142,31 @@ genTxId = prune $ random32bs <&> TxId
 
 random32bs :: MonadGen f => f BuiltinByteString
 random32bs = genBuiltinByteString 32
+
+mkTxOut :: DatumHash -> Value -> PubKeyHash -> TxOut
+mkTxOut od v pkh =
+  TxOut
+    { txOutAddress  = Address (PubKeyCredential pkh) Nothing
+    , txOutValue    = v
+    , txOutDatumHash = Just od
+    }
+
+mkTxIn :: TxOutRef -> TxOut -> TxInInfo
+mkTxIn ref out =
+  TxInInfo
+    { txInInfoOutRef   = ref
+    , txInInfoResolved = out
+    }
+
+genTxIn :: TxOutRef -> DatumHash -> AssetClass -> Integer -> PubKeyHash -> TxInInfo
+genTxIn ref od x xQty pkh =
+  let
+    value = mkValues [mkValue x xQty] mempty
+    txOut = mkTxOut od value pkh
+  in mkTxIn ref txOut
+
+genTxOut :: DatumHash -> AssetClass -> Integer -> PubKeyHash -> TxOut
+genTxOut od lq lqQty pkh =
+  let
+    value = mkValues [mkValue lq lqQty] mempty
+  in mkTxOut od value pkh

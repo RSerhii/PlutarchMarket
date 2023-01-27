@@ -7,13 +7,15 @@ import qualified PlutusTx
 import Eval (expectFailure, expectSuccess)
 import Market.Types
 import TestUtils
+import PlutusLedgerApi.V1 (toData)
 
 spec :: TestTree
 spec =
   testGroup
     "marketValidator tests"
     [
-      cancelOfferTestGroup
+      cancelOfferTestGroup,
+      acceptOfferTestGroup
     ]
 
 cancelOfferTestGroup :: TestTree
@@ -38,24 +40,24 @@ cancelOfferWithoutContext = property $ do
 cancelOfferWithoutDatum :: Property
 cancelOfferWithoutDatum = property $ do
   seller <- forAll genPkh
-  orderTxRef <- forAll genTxOutRef
+  offerTxRef <- forAll genTxOutRef
   let 
     offerRedeemer = mkOfferData CancelOffer
     txInfo = mkTxInfo seller
-    purpose = mkPurpose orderTxRef
+    purpose = mkPurpose offerTxRef
     cxtToData = PlutusTx.toData $ mkContext txInfo purpose
   expectFailure [PlutusTx.toData (), offerRedeemer, cxtToData]
 
 cancelOfferSuccess :: Property
 cancelOfferSuccess = property $ do
   seller <- forAll genPkh
-  orderTxRef <- forAll genTxOutRef
+  offerTxRef <- forAll genTxOutRef
   let 
     (token, _) = genAssets
     offerDatum = genDatum token seller 10
     offerRedeemer = mkOfferData CancelOffer
     txInfo = mkTxInfo seller
-    purpose = mkPurpose orderTxRef
+    purpose = mkPurpose offerTxRef
     cxtToData = PlutusTx.toData $ mkContext txInfo purpose
   expectSuccess [offerDatum, offerRedeemer, cxtToData]
 
@@ -63,12 +65,44 @@ cancelOfferWithWrongSigner :: Property
 cancelOfferWithWrongSigner = property $ do
   seller <- forAll genPkh
   signer <- forAll genPkh
-  orderTxRef <- forAll genTxOutRef
+  offerTxRef <- forAll genTxOutRef
   let 
     (token, _) = genAssets
     offerDatum = genDatum token seller 10
     offerRedeemer = mkOfferData CancelOffer
     txInfo = mkTxInfo signer
-    purpose = mkPurpose orderTxRef
+    purpose = mkPurpose offerTxRef
     cxtToData = PlutusTx.toData $ mkContext txInfo purpose
   expectFailure [offerDatum, offerRedeemer, cxtToData]
+
+
+acceptOfferTestGroup :: TestTree
+acceptOfferTestGroup = testGroup "acceptOffer"
+  [ 
+    HH.testProperty "acceptOfferSuccess" acceptOfferSuccess
+  ]
+  
+acceptOfferSuccess :: Property
+acceptOfferSuccess = property $ do
+  seller <- forAll genPkh
+  buyer <- forAll genPkh
+  script <- forAll genPkh
+  offerTxRef <- forAll genTxOutRef
+  buyerTxRef <- forAll genTxOutRef
+  let 
+    (token, token2) = genAssets
+    offerDatum = mkOfferDatum token seller 10
+    offerRedeemer = mkOfferData AcceptOffer
+    
+    datumHash = mkDatumHash $ mkDatum offerDatum
+
+    offerTxIn = genTxIn offerTxRef datumHash token2 15 script
+    buyerTxIn = genTxIn buyerTxRef datumHash token 10 buyer
+    
+    sellerTxOut = genTxOut datumHash token 10 seller
+    buyerTxOut = genTxOut datumHash token2 15 buyer
+    
+    txInfo = mkTxInfoWithIO [offerTxIn, buyerTxIn] [sellerTxOut, buyerTxOut] seller
+    purpose = mkPurpose offerTxRef
+    cxtToData = PlutusTx.toData $ mkContext txInfo purpose
+  expectSuccess [toData offerDatum, offerRedeemer, cxtToData]

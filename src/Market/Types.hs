@@ -50,7 +50,7 @@ instance ToData OfferAction where
         AcceptOffer -> 0
         CancelOffer -> 1
 
-data OfferRedeemer = OfferRedeemer
+newtype OfferRedeemer = OfferRedeemer
     { action      :: OfferAction
     }
     deriving stock (Show)
