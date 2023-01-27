@@ -79,7 +79,10 @@ cancelOfferWithWrongSigner = property $ do
 acceptOfferTestGroup :: TestTree
 acceptOfferTestGroup = testGroup "acceptOffer"
   [ 
-    HH.testProperty "acceptOfferSuccess" acceptOfferSuccess
+    HH.testProperty "acceptOfferSuccess" acceptOfferSuccess,
+    HH.testProperty "acceptOfferNotEnoughTokens" acceptOfferNotEnoughTokens,
+    HH.testProperty "acceptOfferNoTokensForSeller" acceptOfferNoTokensForSeller,
+    HH.testProperty "acceptOfferSomeTokensForSeller" acceptOfferSomeTokensForSeller
   ]
   
 acceptOfferSuccess :: Property
@@ -106,3 +109,79 @@ acceptOfferSuccess = property $ do
     purpose = mkPurpose offerTxRef
     cxtToData = PlutusTx.toData $ mkContext txInfo purpose
   expectSuccess [toData offerDatum, offerRedeemer, cxtToData]
+
+acceptOfferNotEnoughTokens :: Property
+acceptOfferNotEnoughTokens = property $ do
+  seller <- forAll genPkh
+  buyer <- forAll genPkh
+  script <- forAll genPkh
+  offerTxRef <- forAll genTxOutRef
+  buyerTxRef <- forAll genTxOutRef
+  let 
+    (token, token2) = genAssets
+    offerDatum = mkOfferDatum token seller 10
+    offerRedeemer = mkOfferData AcceptOffer
+    
+    datumHash = mkDatumHash $ mkDatum offerDatum
+
+    offerTxIn = genTxIn offerTxRef datumHash token2 15 script
+    buyerTxIn = genTxIn buyerTxRef datumHash token 9 buyer
+    
+    sellerTxOut = genTxOut datumHash token 9 seller
+    buyerTxOut = genTxOut datumHash token2 15 buyer
+    
+    txInfo = mkTxInfoWithIO [offerTxIn, buyerTxIn] [sellerTxOut, buyerTxOut] seller
+    purpose = mkPurpose offerTxRef
+    cxtToData = PlutusTx.toData $ mkContext txInfo purpose
+  expectFailure [toData offerDatum, offerRedeemer, cxtToData]
+  
+acceptOfferNoTokensForSeller :: Property
+acceptOfferNoTokensForSeller = property $ do
+  seller <- forAll genPkh
+  buyer <- forAll genPkh
+  script <- forAll genPkh
+  offerTxRef <- forAll genTxOutRef
+  buyerTxRef <- forAll genTxOutRef
+  let 
+    (token, token2) = genAssets
+    offerDatum = mkOfferDatum token seller 10
+    offerRedeemer = mkOfferData AcceptOffer
+    
+    datumHash = mkDatumHash $ mkDatum offerDatum
+
+    offerTxIn = genTxIn offerTxRef datumHash token2 15 script
+    buyerTxIn = genTxIn buyerTxRef datumHash token 10 buyer
+    
+    sellerTxOut = genTxOut datumHash token 10 buyer
+    buyerTxOut = genTxOut datumHash token2 15 buyer
+    
+    txInfo = mkTxInfoWithIO [offerTxIn, buyerTxIn] [sellerTxOut, buyerTxOut] seller
+    purpose = mkPurpose offerTxRef
+    cxtToData = PlutusTx.toData $ mkContext txInfo purpose
+  expectFailure [toData offerDatum, offerRedeemer, cxtToData]
+
+acceptOfferSomeTokensForSeller :: Property
+acceptOfferSomeTokensForSeller = property $ do
+  seller <- forAll genPkh
+  buyer <- forAll genPkh
+  script <- forAll genPkh
+  offerTxRef <- forAll genTxOutRef
+  buyerTxRef <- forAll genTxOutRef
+  let 
+    (token, token2) = genAssets
+    offerDatum = mkOfferDatum token seller 10
+    offerRedeemer = mkOfferData AcceptOffer
+    
+    datumHash = mkDatumHash $ mkDatum offerDatum
+
+    offerTxIn = genTxIn offerTxRef datumHash token2 15 script
+    buyerTxIn = genTxIn buyerTxRef datumHash token 10 buyer
+    
+    sellerTxOut = genTxOut datumHash token 9 seller
+    buyerTxOut = genTxOut datumHash token 1 buyer
+    buyerTxOut2 = genTxOut datumHash token2 15 buyer
+    
+    txInfo = mkTxInfoWithIO [offerTxIn, buyerTxIn] [sellerTxOut, buyerTxOut, buyerTxOut2] seller
+    purpose = mkPurpose offerTxRef
+    cxtToData = PlutusTx.toData $ mkContext txInfo purpose
+  expectFailure [toData offerDatum, offerRedeemer, cxtToData]
